@@ -1,128 +1,197 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define MAX 100
-struct Node{
+
+struct Node {
     int data;
     struct Node *left, *right;
 };
 
-struct Stack{
+struct Stack {
     int top;
     int size;
-    struct Node** arr;
+    struct Node **arr;
 };
 
-struct Node* createNode(int data){
-    struct Node* node = (struct Node*)malloc(sizeof(struct Node));
-    node->data = data;
-    node->left = node->right = NULL;
-    return node;
+// Initialize stack
+void initStack(struct Stack *s, int size) {
+    s->size = size;
+    s->top = -1;
+    s->arr = malloc(size * sizeof(struct Node*));
+
+    if (s->arr == NULL) {
+        printf("Memory allocation failed for stack\n");
+        exit(1);
+    }
 }
 
-struct Node* insert(struct Node* root, int data){
-    struct Node* newNode = createNode(data);
-    if(!root){
-        return newNode;
-    }
-    struct Node* curr = root;
-    struct Node* parent = NULL;
-    while (curr != NULL){
-        parent = curr;
-        if(data < curr->data){
-            curr = curr->left;
-        } else if(data > curr->data){
-            curr = curr->right;
-        } else{
-            return root;
-        }
-    }
-    if(data < parent->data){
-        parent->left = newNode;
-    } else{
-        parent->right = newNode;
-    }
-    return root;
+// Free stack memory
+void freeStack(struct Stack *s) {
+    free(s->arr);
 }
 
-void push(struct Stack* s, struct Node* x){
-    if(s->top == s->size - 1){
-        printf("Stack full\n");
+// Push node onto stack
+void push(struct Stack *s, struct Node *x) {
+    if (s->top == s->size - 1) {
+        printf("Stack overflow\n");
         return;
     }
     s->arr[++s->top] = x;
 }
 
-struct Node* pop(struct Stack* s){
-    if(s->top == -1){
-        printf("Stack empty\n");
+// Pop node from stack
+struct Node* pop(struct Stack *s) {
+    if (s->top == -1) {
         return NULL;
     }
     return s->arr[s->top--];
 }
 
+// Create new node
+struct Node* createNode(int data) {
+    struct Node* node = malloc(sizeof(struct Node));
+
+    if (node == NULL) {
+        printf("Memory allocation failed for node\n");
+        exit(1);
+    }
+
+    node->data = data;
+    node->left = node->right = NULL;
+    return node;
+}
+
+// Insert node
+struct Node* insert(struct Node* root, int data) {
+    struct Node* newNode = createNode(data);
+
+    if (root == NULL)
+        return newNode;
+
+    struct Node* curr = root;
+    struct Node* parent = NULL;
+
+    while (curr != NULL) {
+        parent = curr;
+
+        if (data < curr->data)
+            curr = curr->left;
+        else if (data > curr->data)
+            curr = curr->right;
+        else {
+            free(newNode);
+            return root;
+        }
+    }
+
+    if (data < parent->data)
+        parent->left = newNode;
+    else
+        parent->right = newNode;
+
+    return root;
+}
+
+// Inorder
 void inorder(struct Node* root, struct Stack* s) {
-    while(root != NULL || s->top != -1){
-        while(root != NULL){
+    s->top = -1;   // reset stack
+
+    while (root != NULL || s->top != -1) {
+        while (root != NULL) {
             push(s, root);
             root = root->left;
         }
+
         root = pop(s);
         printf("%d ", root->data);
         root = root->right;
     }
 }
 
-void preorder(struct Node* root, struct Stack* s){
+// Preorder
+void preorder(struct Node* root, struct Stack* s) {
     if (!root) return;
+
+    s->top = -1;   // reset stack
     push(s, root);
+
     while (s->top != -1) {
         root = pop(s);
         printf("%d ", root->data);
-        if(root->right) push(s, root->right);
-        if(root->left) push(s, root->left);
+
+        if (root->right) push(s, root->right);
+        if (root->left)  push(s, root->left);
     }
 }
 
-void postorder(struct Node* root, struct Stack* s){
-    if (root == NULL) return;
-    struct Stack stk;
-    stk.size = MAX;
-    stk.top = -1;
-    stk.arr = (struct Node**)malloc(stk.size * sizeof(struct Node*));
+// Postorder
+void postorder(struct Node* root, struct Stack* s) {
+    if (!root) return;
+
+    s->top = -1;   // reset stack
+
+    struct Stack s2;
+    initStack(&s2, s->size);
+
     push(s, root);
-    while(s->top != -1){
+
+    while (s->top != -1) {
         root = pop(s);
-        push(&stk, root);
-        if(root->left) push(s, root->left);
-        if(root->right) push(s, root->right);
+        push(&s2, root);
+
+        if (root->left)  push(s, root->left);
+        if (root->right) push(s, root->right);
     }
-    while(stk.top != -1){
-        root = pop(&stk);
+
+    while (s2.top != -1) {
+        root = pop(&s2);
         printf("%d ", root->data);
     }
-    free(stk.arr);
+
+    freeStack(&s2);
 }
 
-int main(){
-    struct Stack s;
-    s.size = MAX;
-    s.top = -1;
-    s.arr = (struct Node**)malloc(s.size * sizeof(struct Node*));
+void freeTree(struct Node* root) {
+    if (root) {
+        freeTree(root->left);
+        freeTree(root->right);
+        free(root);
+    }
+}
+
+int main() {
     int n, data;
     struct Node* root = NULL;
+
     printf("Number of nodes? ");
     scanf("%d", &n);
+
+    if (n <= 0) {
+        printf("Invalid number of nodes.\n");
+        return 0;
+    }
+
+    struct Stack s;
+    initStack(&s, n);   // stack size = number of nodes
+
     printf("Enter values: ");
-    for(int i = 0; i < n; i++){
+    for (int i = 0; i < n; i++) {
         scanf("%d", &data);
         root = insert(root, data);
     }
-    printf("\n-----INORDER-----\n");
+
+    printf("\n----- INORDER -----\n");
     inorder(root, &s);
-    printf("\n-----PREORDER-----\n");
+
+    printf("\n----- PREORDER -----\n");
     preorder(root, &s);
-    printf("\n-----POSTORDER-----\n");
+
+    printf("\n----- POSTORDER -----\n");
     postorder(root, &s);
-    free(s.arr);
+
+    // Free all memory
+    freeTree(root);
+    freeStack(&s);
+
     return 0;
 }
+
